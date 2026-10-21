@@ -1,0 +1,1 @@
+Telegram Desktop download dialog test file.
